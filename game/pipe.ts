@@ -9,16 +9,17 @@ class Pipe extends Container {
     private candleData: CandleData;
 
     public readonly pipeWidth = 80;
-    public readonly pipeGap = 200;
+    public readonly pipeGap = 250;
     private readonly baseHeight = 300; // Adjusted base height for better visualization
     private readonly minHeight = 50;   // Minimum height for playability
 
-    constructor(graphic: Texture, candleData: CandleData) {
+    constructor(bullishTexture: Texture, bearishTexture: Texture, candleData: CandleData) {
         super();
         this.candleData = candleData;
 
-        this.topHalf = new Sprite(graphic);
-        this.bottomHalf = new Sprite(graphic);
+        // Create sprites with respective textures
+        this.bottomHalf = new Sprite(bullishTexture);
+        this.topHalf = new Sprite(bearishTexture);
 
         // Set anchors for proper positioning
         this.bottomHalf.anchor.set(0, 0);
@@ -33,10 +34,10 @@ class Pipe extends Container {
         this.topHalf.width = this.pipeWidth;
         this.bottomHalf.width = this.pipeWidth;
 
-        // Set color based on price movement (green for up, red for down)
-        const tint = this.candleData.close >= this.candleData.open ? 0x00FF00 : 0x00FF00 ;
-        this.topHalf.tint = tint;
-        this.bottomHalf.tint = tint;
+        // Remove the tint setting since we're using different textures now
+        // const tint = this.candleData.close >= this.candleData.open ? 0x00FF00 : 0x00FF00;
+        // this.topHalf.tint = tint;
+        // this.bottomHalf.tint = tint;
 
         this.addChild(this.bottomHalf);
         this.addChild(this.topHalf);

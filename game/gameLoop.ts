@@ -46,8 +46,11 @@ function getGameUpdateFuncs(stage : Container, renderer: Renderer) {
     //Create background
     const background = new parallaxBackground();
 
-    //Create pipe texture
+    // Create pipe texture
     const pipeTexture = Texture.from(pipeImg as string);
+    const bullishTexture = Texture.from(bullishCandleImg as string);
+    const bearishTexture = Texture.from(bearishCandleImg as string);
+
 
     let pipes : Pipe[] = [];
     let playClick = (event : any) => {
@@ -140,7 +143,7 @@ function getGameUpdateFuncs(stage : Container, renderer: Renderer) {
         if(state['inGameState']['distanceSinceSpawn'] > constants['pipes']['distancePerSpawn']) {
             const latestCandle = priceService.getLatestCandle();
             if (latestCandle) {
-                const p = new Pipe(pipeTexture, latestCandle);
+                const p = new Pipe(bullishTexture, bearishTexture, latestCandle);
                 pipeLayer.addChild(p);
                 pipes.push(p);
                 state['inGameState']['distanceSinceSpawn'] -= constants['pipes']['distancePerSpawn'];
