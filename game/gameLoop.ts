@@ -8,13 +8,20 @@ import { Pipe } from '@/game/pipe'
 import state from '@/game/gameState'
 import ScoreCard from '@/game/scoreCard'
 import parallaxBackground from '@/game/parallaxBackground'
+import { PriceBufferService } from './services/PriceBufferService'
 
 // Replace the image imports with direct paths
 const playerImg = '/assets/wing.png'
 const groundImg = '/assets/grass.png'
 const pipeImg = '/assets/pipe.png'
 
+const bullishCandleImg = '/assets/bullishCandle.png'
+const bearishCandleImg = '/assets/bearishCandle.png'
+
 function getGameUpdateFuncs(stage : Container, renderer: Renderer) {
+    // Initialize price service
+    const priceService = PriceBufferService.getInstance();
+    
     // Create container for pipes
     const pipeLayer = new Container();
 
@@ -130,13 +137,14 @@ function getGameUpdateFuncs(stage : Container, renderer: Renderer) {
         state['inGameState']['totalDistance'] += delta*constants['moveSpeed'];
 
 
-        if(state['inGameState']['distanceSinceSpawn'] > constants['pipes']['distancePerSpawn']){
-            const p = new Pipe(pipeTexture)
-            p.y = p.width + Math.random()*(constants['gameHeight'] - p.pipeGap - 2*p.pipeWidth);
-            pipeLayer.addChild(p);
-            pipes.push(p);
-
-            state['inGameState']['distanceSinceSpawn'] -= constants['pipes']['distancePerSpawn'];
+        if(state['inGameState']['distanceSinceSpawn'] > constants['pipes']['distancePerSpawn']) {
+            const latestCandle = priceService.getLatestCandle();
+            if (latestCandle) {
+                const p = new Pipe(pipeTexture, latestCandle);
+                pipeLayer.addChild(p);
+                pipes.push(p);
+                state['inGameState']['distanceSinceSpawn'] -= constants['pipes']['distancePerSpawn'];
+            }
         }
 
 
