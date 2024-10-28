@@ -2,17 +2,17 @@
 
 import { useEffect, useRef } from 'react';
 import { Application, Renderer } from 'pixi.js';
-import styles from './Game.module.css';
 import { createGameUpdate } from '@/game/gameLoop';
 import constants from '@/game/constants';
 
 const Game = () => {
-  const gameRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (!gameRef.current) return;
+    if (!canvasRef.current) return;
 
     const app = new Application({
+      view: canvasRef.current,
       width: constants.gameWidth,
       height: constants.gameHeight,
       backgroundColor: 0x1099bb,
@@ -21,21 +21,20 @@ const Game = () => {
       antialias: true,
     });
 
-    const canvas = app.view as HTMLCanvasElement;
-    gameRef.current.appendChild(canvas);
-
     // Proper scaling setup
     const resize = () => {
-      const parent = gameRef.current;
-      if (!parent || !canvas) return;
+      if (!canvasRef.current) return;
+
+      const parent = canvasRef.current.parentElement;
+      if (!parent) return;
 
       const scaleFactor = Math.min(
         parent.clientWidth / constants.gameWidth,
         parent.clientHeight / constants.gameHeight
       );
 
-      canvas.style.width = `${constants.gameWidth * scaleFactor}px`;
-      canvas.style.height = `${constants.gameHeight * scaleFactor}px`;
+      canvasRef.current.style.width = `${constants.gameWidth * scaleFactor}px`;
+      canvasRef.current.style.height = `${constants.gameHeight * scaleFactor}px`;
     };
 
     window.addEventListener('resize', resize);
@@ -51,7 +50,17 @@ const Game = () => {
     };
   }, []);
 
-  return <div ref={gameRef} className={styles.gameWrapper} />;
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        display: 'block',
+        maxWidth: '100%',
+        maxHeight: '100%',
+        objectFit: 'contain'
+      }}
+    />
+  );
 };
 
 export default Game;
