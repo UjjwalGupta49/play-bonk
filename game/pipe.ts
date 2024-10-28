@@ -9,7 +9,7 @@ class Pipe extends Container {
     private candleData: CandleData;
 
     public readonly pipeWidth = 80;
-    public readonly pipeGap = 250;
+    public readonly pipeGap = 200;
     private readonly baseHeight = 300; // Adjusted base height for better visualization
     private readonly minHeight = 50;   // Minimum height for playability
 

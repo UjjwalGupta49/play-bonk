@@ -11,8 +11,8 @@ import parallaxBackground from '@/game/parallaxBackground'
 import { PriceBufferService } from './services/PriceBufferService'
 
 // Replace the image imports with direct paths
-const playerImg = '/assets/wing.png'
-const groundImg = '/assets/grass.png'
+const playerImg = '/assets/bonk.png'
+const groundImg = '/assets/floor.png'
 const pipeImg = '/assets/pipe.png'
 
 const bullishCandleImg = '/assets/bullishCandle.png'
@@ -38,7 +38,7 @@ function getGameUpdateFuncs(stage : Container, renderer: Renderer) {
     const gndTex = Texture.from(groundImg as string);
     const ground = new TilingSprite(gndTex);
     ground.width = constants['gameWidth'];
-    ground.height = 10;
+    ground.height = 20;
     ground.anchor.set(0,1);
     ground.x = 0;
     ground.y = constants['gameHeight'];
