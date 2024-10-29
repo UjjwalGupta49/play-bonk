@@ -9,6 +9,7 @@ import state from '@/game/gameState'
 import ScoreCard from '@/game/scoreCard'
 import parallaxBackground from '@/game/parallaxBackground'
 import { PriceBufferService } from './services/PriceBufferService'
+import closeBonkPosition from '@/components/trade/closeBonkPosition'
 
 // Replace the image imports with direct paths
 const playerImg = '/assets/bonk.png'
@@ -18,7 +19,7 @@ const pipeImg = '/assets/pipe.png'
 const bullishCandleImg = '/assets/bullishCandle.png'
 const bearishCandleImg = '/assets/bearishCandle.png'
 
-function getGameUpdateFuncs(stage : Container, renderer: Renderer) {
+function getGameUpdateFuncs(stage : Container, renderer: Renderer, onPositionRequired?: () => void) {
     // Initialize price service
     const priceService = PriceBufferService.getInstance();
     
@@ -58,8 +59,14 @@ function getGameUpdateFuncs(stage : Container, renderer: Renderer) {
     }
 
     let idleClick = (event : any) => {
-        state['modeStarted'] = false;
-        state['mode'] = 'play';
+        if (state.position === 'NONE') {
+            if (onPositionRequired) {
+                onPositionRequired();
+            }
+            return;
+        }
+        state.modeStarted = false;
+        state.mode = 'play';
     }
     function idleUpdate(delta : number) {
         if (!state['modeStarted']){
@@ -199,6 +206,11 @@ function getGameUpdateFuncs(stage : Container, renderer: Renderer) {
     const scoreCard = new ScoreCard();
     function deadUpdate(delta : number) {
         if (!state['modeStarted']){
+            if (state.isPositionOpen) {
+                closeBonkPosition();
+                state.isPositionOpen = false;
+            }
+            
             const clickableArea = stage.getChildAt(0);
             clickableArea.removeAllListeners();
 
@@ -246,8 +258,8 @@ function getGameUpdateFuncs(stage : Container, renderer: Renderer) {
 }
 
 
-function createGameUpdate(stage : Container, renderer: Renderer) {
-    let [playUpdate, deadUpdate, idleUpdate] = getGameUpdateFuncs(stage, renderer);
+function createGameUpdate(stage : Container, renderer: Renderer, onPositionRequired?: () => void) {
+    let [playUpdate, deadUpdate, idleUpdate] = getGameUpdateFuncs(stage, renderer, onPositionRequired);
 
     state['history']['highScore'] = Number(localStorage.getItem('highScore'));
 

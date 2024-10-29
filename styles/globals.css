@@ -35,8 +35,7 @@ body {
   width: 100vw;
   height: 100vh;
   background: #000;
-}
- */
+} */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -119,4 +118,15 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@font-face {
+  font-family: 'Arcade';
+  src: url('../fonts/PressStart2P-Regular.ttf') format('truetype');
+}
+
+.font-arcade {
+  font-family: 'Arcade', monospace;
+  text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
+  letter-spacing: 1px;
 }

@@ -30,7 +30,7 @@ export enum PriceStatus {
 
 export function subscribeToPriceFeeds(callback: (symbol: string, priceEntry: PythPriceEntry) => void) {
   priceServiceConnection.subscribePriceFeedUpdates([TOKEN_PRICE_FEED_ID], (priceFeed) => {
-    console.log("Received price feed update for BONK");
+    // console.log("Received price feed update for BONK");
     const pythPriceEntry = createPythPriceEntry(priceFeed, 'BONK');
     callback('BONK', pythPriceEntry);
   });

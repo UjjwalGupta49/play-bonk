@@ -64,7 +64,7 @@ export class PriceBufferService {
 
         // Calculate percentage change for logging
         const percentChange = ((candle.close - candle.open) / candle.open) * 100;
-        console.log(`New candle: ${percentChange.toFixed(2)}% change`);
+        // console.log(`New candle: ${percentChange.toFixed(2)}% change`);
 
         this.candleBuffer.push(candle);
         if (this.candleBuffer.length > 10) {
