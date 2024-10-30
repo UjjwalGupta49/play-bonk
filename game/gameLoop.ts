@@ -1,4 +1,5 @@
 import { Sprite, Text, Texture, Container, BaseTexture, Rectangle, TilingSprite, Renderer } from 'pixi.js'
+import { toast } from "@/hooks/use-toast"
 
 import { titleTextStyle, scoreTextStyle } from '@/styles/textStyles'
 import { floorCollides, pipeCollides } from '@/game/collision'
@@ -59,15 +60,45 @@ function getGameUpdateFuncs(stage : Container, renderer: Renderer, onPositionReq
     }
 
     let idleClick = (event : any) => {
-        if (state.position === 'NONE') {
-            if (onPositionRequired) {
-                onPositionRequired();
-            }
+        if (!validateGameStart()) {
             return;
         }
+        
         state.modeStarted = false;
         state.mode = 'play';
     }
+
+    const validateGameStart = () => {
+        if (state.position === 'NONE') {
+            toast({
+                title: "Position Required",
+                description: "Please select MOON or TANK position first",
+                className: "bg-black border-2 border-[#ffe135] text-[#FFFCEA]",
+            })
+            return false;
+        }
+
+        if (!state.depositAmount) {
+            toast({
+                title: "Deposit Required",
+                description: "Please select a deposit amount ($5, $10, or $20)",
+                className: "bg-black border-2 border-[#ffe135] text-[#FFFCEA]",
+            })
+            return false;
+        }
+
+        if (!state.isPositionOpen) {
+            toast({
+                title: "Position Not Open",
+                description: "Please wait for your position to be opened",
+                className: "bg-black border-2 border-[#ffe135] text-[#FFFCEA]",
+            })
+            return false;
+        }
+
+        return true;
+    }
+
     function idleUpdate(delta : number) {
         if (!state['modeStarted']){
             stage.removeChildren();

@@ -4,11 +4,9 @@ import { useEffect, useRef } from 'react';
 import { Application, Renderer } from 'pixi.js';
 import { createGameUpdate } from '@/game/gameLoop';
 import constants from '@/game/constants';
-import { useGameToast } from '@/hooks/useGameToast';
 
 const Game = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { showPositionRequiredToast } = useGameToast();
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -17,18 +15,13 @@ const Game = () => {
       view: canvasRef.current,
       width: constants.gameWidth,
       height: constants.gameHeight,
-      backgroundColor: 0x1099bb,
+      backgroundColor: 0x171B26,
       resolution: window.devicePixelRatio || 1,
       autoDensity: true,
       antialias: true,
     });
 
-    // Initialize game with toast callback
-    const gameUpdate = createGameUpdate(
-      app.stage, 
-      app.renderer as Renderer,
-      showPositionRequiredToast
-    );
+    const gameUpdate = createGameUpdate(app.stage, app.renderer as Renderer);
     app.ticker.add(gameUpdate);
 
     // Proper scaling setup

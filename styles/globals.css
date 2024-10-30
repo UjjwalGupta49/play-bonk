@@ -122,7 +122,7 @@ body {
 
 @font-face {
   font-family: 'Arcade';
-  src: url('../fonts/PressStart2P-Regular.ttf') format('truetype');
+  src: url('../pages/fonts/PressStart2P-Regular.ttf') format('truetype');
 }
 
 .font-arcade {

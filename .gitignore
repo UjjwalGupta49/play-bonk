@@ -29,8 +29,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# env files (can opt-in for commiting if needed)
-.env*
+# environment variables
+.env
+.env*.local
+.env.local
+.env.development
+.env.test
+.env.production
 
 # vercel
 .vercel

@@ -6,6 +6,7 @@ let state = {
     modeStarted: false, 
     position: 'NONE' as Position,
     isPositionOpen: false,
+    depositAmount: 0,
     inGameState: {
         currentScore: 0,
         distanceSinceSpawn: 0,

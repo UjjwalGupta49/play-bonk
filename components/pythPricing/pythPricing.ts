@@ -84,3 +84,60 @@ function createPythPriceEntry(priceFeed: PriceFeed, symbol: string): PythPriceEn
     status: status,
   };
 }
+
+export const fetchOraclePrice = async (symbol: string): Promise<PythPriceEntry> => {
+  // console.log (`Starting fetchOraclePrice for symbol: ${symbol}`);
+
+  const priceFeedId = PRICE_FEED_IDS[symbol];
+  if (!priceFeedId) {
+    throw new Error(`Price feed ID not found for symbol: ${symbol}`);
+  }
+
+  try {
+    const priceFeed = await priceServiceConnection.getLatestPriceFeeds([priceFeedId]);
+    
+    if (!priceFeed || priceFeed.length === 0) {
+      throw new Error(`No price feed received for ${symbol}`);
+    }
+
+    const price = priceFeed[0].getPriceUnchecked();
+    const emaPrice = priceFeed[0].getEmaPriceUnchecked();
+
+    // console.log (`Raw price data for ${symbol}:`, price);
+    // console.log (`Raw EMA price data for ${symbol}:`, emaPrice);
+
+    const priceOracle = new OraclePrice({
+      price: new BN(price.price),
+      exponent: new BN(price.expo),
+      confidence: new BN(price.conf),
+      timestamp: new BN(price.publishTime),
+    });
+
+    const emaPriceOracle = new OraclePrice({
+      price: new BN(emaPrice.price),
+      exponent: new BN(emaPrice.expo),
+      confidence: new BN(emaPrice.conf),
+      timestamp: new BN(emaPrice.publishTime),
+    });
+
+    const token = ALL_TOKENS.find(t => t.pythPriceId === priceFeedId);
+    if (!token) {
+      throw new Error(`Token not found for price feed ID: ${priceFeedId}`);
+    }
+
+    const status = !token.isVirtual ? PriceStatus.Trading : PriceStatus.Unknown;
+
+    const pythPriceEntry: PythPriceEntry = {
+      price: priceOracle,
+      emaPrice: emaPriceOracle,
+      isStale: false,
+      status: status,
+    };
+
+    // console.log (`Pyth price entry for ${symbol}:`, pythPriceEntry);
+    return pythPriceEntry;
+  } catch (error) {
+    console.error(`Error in fetchOraclePrice for ${symbol}:`, error);
+    throw error;
+  }
+};
