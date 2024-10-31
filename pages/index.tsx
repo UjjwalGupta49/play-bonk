@@ -23,9 +23,8 @@ import {
 } from "@solana/wallet-adapter-react";
 import { openBonkPosition } from "@/components/trade/openBonkPosition";
 import { closeBonkPosition } from "@/components/trade/closeBonkPosition";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import { AnchorProvider, setProvider } from "@coral-xyz/anchor";
-import bs58 from "bs58";
 import { PerpetualsClient } from "flash-sdk";
 import { PhantomWalletName } from "@solana/wallet-adapter-wallets";
 import { POOL_CONFIGS } from "@/utils/constants";
@@ -33,9 +32,8 @@ import { marketInfo } from "@/components/trade/marketBonk";
 import { createAndExecuteTransaction } from "@/components/trade/createAndExecuteTransaction";
 
 const Home: NextPage = () => {
-  const { publicKey, sendTransaction, connect, wallets, select } = useWallet();
+  const { publicKey, connect, wallets, select } = useWallet();
   const { connection } = useConnection();
-  const [walletSelect, setWalletSelect] = useState<boolean>(false);
   const [positionPrice, setPositionPrice] = useState(0);
   const [pnl, setPnl] = useState(0);
   const [tokenPrice, setTokenPrice] = useState(0);
@@ -125,8 +123,7 @@ const Home: NextPage = () => {
           console.log("wallets");
           console.log(wallets);
           try {
-            await select(PhantomWalletName);
-            setWalletSelect(true);
+            select(PhantomWalletName);
             await connect(); // This comes from useWallet()
           } catch (error) {
             console.log("error", error);
@@ -167,12 +164,12 @@ const Home: NextPage = () => {
       if (state.position === "MOON") {
         // Get long market
         market = Object.entries(marketInfo).find(
-          ([_, info]) => info.side === "long"
+          ([, info]) => info.side === "long"
         )?.[0];
       } else if (state.position === "TANK") {
         // Get short market
         market = Object.entries(marketInfo).find(
-          ([_, info]) => info.side === "short"
+          ([, info]) => info.side === "short"
         )?.[0];
       }
 
@@ -196,17 +193,6 @@ const Home: NextPage = () => {
         marketInfo[market].pool
       );
 
-      const additionalKeypairs = positionInstructions.additionalSigners.map(
-        (signer) => {
-          if (signer instanceof Keypair) {
-            return signer;
-          } else {
-            throw new Error("Additional signer is not a Keypair");
-          }
-        }
-      );
-
-      // const signature = await sendTransaction(tx, connection);
       const addressLookupTablePublicKeys = positionInstructions.alts.map(
         (alt) => alt.key
       );
@@ -248,6 +234,9 @@ const Home: NextPage = () => {
       } catch (error) {
         // Dismiss the loading toast using the dismiss function
         dismissLoadingToast();
+        setPositionPrice(0);
+
+        state.isPositionOpen = false;
 
         console.error("Failed to execute transaction:", error);
         if (error instanceof Error) {
@@ -294,6 +283,15 @@ const Home: NextPage = () => {
   };
 
   const closePosition = async () => {
+    if (!wallet) {
+      toast({
+        title: "Connect Wallet",
+        description: "Please connect your wallet to continue",
+        className: "bg-[#ffe135] text-black border-2 border-[#ffe135]",
+      });
+      return;
+    }
+
     try {
       const perpClient = await getOrCreatePerpClient();
 
@@ -302,12 +300,12 @@ const Home: NextPage = () => {
       if (state.position === "MOON") {
         // Get long market
         market = Object.entries(marketInfo).find(
-          ([_, info]) => info.side === "long"
+          ([, info]) => info.side === "long"
         )?.[0];
       } else if (state.position === "TANK") {
         // Get short market
         market = Object.entries(marketInfo).find(
-          ([_, info]) => info.side === "short"
+          ([, info]) => info.side === "short"
         )?.[0];
       }
 
@@ -348,8 +346,6 @@ const Home: NextPage = () => {
 
         // Dismiss the loading toast using the dismiss function
         dismissLoadingToast();
-
-        console.log("signature", signature);
 
         if (signature.status === "success") {
           state.isPositionOpen = false;

@@ -6,24 +6,15 @@ import {
   TransactionInstruction,
   MessageV0,
 } from "@solana/web3.js";
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-
-// Add this interface at the top of the file
-interface WalletError extends Error {
-  message: string;
-  code?: number;
-}
+import { AnchorWallet } from "@solana/wallet-adapter-react";
 
 export async function createAndExecuteTransaction(
   connection: Connection,
-  wallet: any,
+  wallet: AnchorWallet,
   instructions: TransactionInstruction[],
   addressLookupTables: PublicKey[] = []
-): Promise<{ status: string; signature: string | null } | undefined> {
+): Promise<{ status: string; signature: string | null }> {
   try {
-    // if (!wallet.publicKey || !wallet.signTransaction) {
-    //   throw new Error("Wallet not connected");
-    // }
 
     // Get the latest blockhash
     const { blockhash, lastValidBlockHeight } =
@@ -122,14 +113,14 @@ export async function createAndExecuteTransaction(
       // Handle other errors
       console.error("Error executing transaction:", error);
       return {
-        status: "error executing transaction",
+        status: "error: executing transaction",
         signature: null,
       };
     }
   } catch (error) {
     console.error("Error in createAndExecuteTransaction:", error);
     return {
-      status: "error in createAndExecuteTransaction",
+      status: "error: in createAndExecuteTransaction",
       signature: null,
     };
   }

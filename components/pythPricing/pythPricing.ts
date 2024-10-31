@@ -31,7 +31,7 @@ export enum PriceStatus {
 export function subscribeToPriceFeeds(callback: (symbol: string, priceEntry: PythPriceEntry) => void) {
   priceServiceConnection.subscribePriceFeedUpdates([TOKEN_PRICE_FEED_ID], (priceFeed) => {
     // console.log("Received price feed update for BONK");
-    const pythPriceEntry = createPythPriceEntry(priceFeed, 'BONK');
+    const pythPriceEntry = createPythPriceEntry(priceFeed);
     callback('BONK', pythPriceEntry);
   });
 }
@@ -49,14 +49,14 @@ export async function getLatestPrice(): Promise<PythPriceEntry | null> {
       return null;
     }
 
-    return createPythPriceEntry(priceFeed[0], 'BONK');
+    return createPythPriceEntry(priceFeed[0]);
   } catch (error) {
     console.error(`Error fetching latest price for BONK:`, error);
     return null;
   }
 }
 
-function createPythPriceEntry(priceFeed: PriceFeed, symbol: string): PythPriceEntry {
+function createPythPriceEntry(priceFeed: PriceFeed): PythPriceEntry {
   const price = priceFeed.getPriceUnchecked();
   const emaPrice = priceFeed.getEmaPriceUnchecked();
 

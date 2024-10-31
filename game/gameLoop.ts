@@ -9,8 +9,7 @@ import { Pipe } from '@/game/pipe'
 import state from '@/game/gameState'
 import ScoreCard from '@/game/scoreCard'
 import parallaxBackground from '@/game/parallaxBackground'
-import { PriceBufferService } from './services/PriceBufferService'
-import closeBonkPosition from '@/components/trade/closeBonkPosition'
+import { PriceBufferService } from './services/PriceBufferService';
 
 // Replace the image imports with direct paths
 const playerImg = '/assets/bonk.png'
