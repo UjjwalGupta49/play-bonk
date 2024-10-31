@@ -16,5 +16,6 @@ let state = {
     history: {
         highScore: 0,
     },
+    isPlayerDead: false,
 }
 export default state;

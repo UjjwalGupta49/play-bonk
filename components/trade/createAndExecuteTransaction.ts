@@ -8,16 +8,22 @@ import {
 } from "@solana/web3.js";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
+// Add this interface at the top of the file
+interface WalletError extends Error {
+  message: string;
+  code?: number;
+}
+
 export async function createAndExecuteTransaction(
   connection: Connection,
   wallet: any,
   instructions: TransactionInstruction[],
   addressLookupTables: PublicKey[] = []
-): Promise<string> {
+): Promise<{ status: string; signature: string | null } | undefined> {
   try {
-    if (!wallet.publicKey || !wallet.signTransaction) {
-      throw new Error("Wallet not connected");
-    }
+    // if (!wallet.publicKey || !wallet.signTransaction) {
+    //   throw new Error("Wallet not connected");
+    // }
 
     // Get the latest blockhash
     const { blockhash, lastValidBlockHeight } =
@@ -91,17 +97,40 @@ export async function createAndExecuteTransaction(
       });
 
       if (confirmation.value.err) {
-        throw new Error(confirmation.value.err.toString());
+        console.error("Transaction failed:", confirmation.value.err.toString());
+        return {
+          status: "error: transaction failed",
+          signature: null,
+        };
       }
 
       console.log("Transaction executed successfully. Signature:", signature);
-      return signature;
-    } catch (error) {
+      return {
+        status: "success",
+        signature: signature,
+      };
+    } catch (error: unknown) {
+      // Handle user rejection specifically
+      if (error instanceof Error && error.message.includes('User rejected')) {
+        console.log('User declined to sign the transaction');
+        return {
+          status: "error: user declined to sign the transaction",
+          signature: null,
+        };
+      }
+      
+      // Handle other errors
       console.error("Error executing transaction:", error);
-      throw error;
+      return {
+        status: "error executing transaction",
+        signature: null,
+      };
     }
   } catch (error) {
     console.error("Error in createAndExecuteTransaction:", error);
-    throw error;
+    return {
+      status: "error in createAndExecuteTransaction",
+      signature: null,
+    };
   }
 }

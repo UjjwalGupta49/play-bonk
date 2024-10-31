@@ -68,12 +68,12 @@ export async function openBonkPosition(
     const leverageBN = new BN(leverage);
     const collateralAmountNew = new BN(
       (collateralUsd / collateralTokenPrice) * 10 ** collateralToken.decimals
-    ); //10/137 = 0.07299270072992701
+    ); 
 
     console.log(`Leverage: ${leverage}`);
     console.log(
       `Calculated collateral amount (New): ${collateralAmountNew} Token`
-    ); // 0.07 SOL
+    ); 
     console.log(`Target oracle price: ${targetOraclePrice.toUiPrice}`);
 
     // Fetch custody accounts
@@ -209,6 +209,8 @@ export async function openBonkPosition(
       instructions: allInstructions,
       additionalSigners,
       alts: perpClient.addressLookupTables,
+      positionPrice:
+        priceAfterSlippage.price * Math.pow(10, priceAfterSlippage.exponent),
     };
   } catch (error) {
     console.error("Error creating open position instruction:", error);

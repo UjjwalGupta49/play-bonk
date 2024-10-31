@@ -7,6 +7,7 @@ import Game from "@/components/Game";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { Toaster } from "@/components/ui/toaster";
 import state from "@/game/gameState";
 import bonkTokenImage from "@/public/bonkToken.jpg";
@@ -35,12 +36,16 @@ const Home: NextPage = () => {
   const { publicKey, sendTransaction, connect, wallets, select } = useWallet();
   const { connection } = useConnection();
   const [walletSelect, setWalletSelect] = useState<boolean>(false);
+  const [positionPrice, setPositionPrice] = useState(0);
   const [pnl, setPnl] = useState(0);
   const [tokenPrice, setTokenPrice] = useState(0);
   const [priceChange, setPriceChange] = useState<"up" | "down" | null>(null);
   const [depositAmount, setDepositAmount] = useState<number>(0);
   const { toast } = useToast();
   const wallet = useAnchorWallet();
+  const [flashPerpClient, setFlashPerpClient] =
+    useState<PerpetualsClient | null>(null);
+  const [isPlayerDead, setIsPlayerDead] = useState(false);
 
   useEffect(() => {
     let lastPrice = 0;
@@ -52,6 +57,24 @@ const Home: NextPage = () => {
         setPriceChange(price > lastPrice ? "up" : "down");
         lastPrice = price;
 
+        // Calculate PNL if position is open
+        if (state.isPositionOpen && positionPrice !== 0) {
+          let pnlValue = 0;
+          const positionSize = state.depositAmount * 5; // 5x leverage
+
+          if (state.position === "MOON") {
+            // For long positions: (currentPrice - entryPrice) * position size
+            pnlValue = (price - positionPrice) * positionSize;
+            console.log("pnlValue");
+            console.log(pnlValue, price, positionPrice);
+          } else if (state.position === "TANK") {
+            // For short positions: (entryPrice - currentPrice) * position size
+            pnlValue = (positionPrice - price) * positionSize;
+          }
+
+          setPnl(pnlValue);
+        }
+
         // Reset price change indicator after animation
         setTimeout(() => setPriceChange(null), 1000);
       }
@@ -60,34 +83,42 @@ const Home: NextPage = () => {
     return () => {
       unsubscribeFromPriceFeeds();
     };
-  }, []);
+  }, [positionPrice]);
 
-  const formatPrice = (price: number) => {
-    if (price === 0) return { base: "...", exponent: "" };
+  const getOrCreatePerpClient = async (): Promise<PerpetualsClient> => {
+    if (flashPerpClient) {
+      return flashPerpClient;
+    }
 
-    // Convert to exponential notation
-    const scientificStr = price.toExponential(5);
-    const [base, exponent] = scientificStr.split("e");
-    const formattedBase = Number(base).toFixed(5);
-    return {
-      base: formattedBase,
-      // Extract just the number from the exponent (removing 'e-' or 'e+')
-      exponent: exponent.replace("e", ""),
-    };
+    if (!wallet) {
+      throw new Error("Wallet not connected");
+    }
+
+    const provider = new AnchorProvider(connection, wallet, {
+      commitment: "confirmed",
+      preflightCommitment: "confirmed",
+      skipPreflight: true,
+    });
+    setProvider(provider);
+
+    // Initialize perpetuals client
+    const newPerpClient = new PerpetualsClient(
+      provider,
+      POOL_CONFIGS[0].programId,
+      POOL_CONFIGS[0].perpComposibilityProgramId,
+      POOL_CONFIGS[0].fbNftRewardProgramId,
+      POOL_CONFIGS[0].rewardDistributionProgram.programId,
+      {}
+    );
+
+    await newPerpClient.loadAddressLookupTable(POOL_CONFIGS[0]);
+    setFlashPerpClient(newPerpClient);
+
+    return newPerpClient;
   };
+
   const openPosition = async () => {
     try {
-      const privateKeyString = process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY;
-      if (!privateKeyString) {
-        throw new Error(
-          "NEXT_PUBLIC_SOLANA_PRIVATE_KEY not found in environment variables"
-        );
-      }
-
-      // Setup wallet and provider
-      const secretKey = bs58.decode(privateKeyString);
-      const keypair = Keypair.fromSecretKey(secretKey);
-
       if (!publicKey) {
         // If no wallet is connected, trigger wallet connection
         try {
@@ -131,24 +162,6 @@ const Home: NextPage = () => {
         return;
       }
 
-      const provider = new AnchorProvider(connection, wallet, {
-        commitment: "confirmed",
-        preflightCommitment: "confirmed",
-        skipPreflight: true,
-      });
-      setProvider(provider);
-      // Initialize perpetuals client
-      const perpClient = new PerpetualsClient(
-        provider,
-        POOL_CONFIGS[0].programId,
-        POOL_CONFIGS[0].perpComposibilityProgramId,
-        POOL_CONFIGS[0].fbNftRewardProgramId,
-        POOL_CONFIGS[0].rewardDistributionProgram.programId,
-        {}
-      );
-
-      await perpClient.loadAddressLookupTable(POOL_CONFIGS[0]);
-
       // Set market based on position side
       let market;
       if (state.position === "MOON") {
@@ -170,6 +183,8 @@ const Home: NextPage = () => {
       // Set size from deposit amount in state
       const sizeUsd = state.depositAmount;
       const leverage = 5;
+
+      const perpClient = await getOrCreatePerpClient();
 
       const positionInstructions = await openBonkPosition(
         perpClient,
@@ -205,6 +220,9 @@ const Home: NextPage = () => {
       });
 
       try {
+        console.log("positionPrice");
+        console.log(positionInstructions.positionPrice); // {price: BN, exponent: -10}
+        setPositionPrice(positionInstructions.positionPrice);
         const signature = await createAndExecuteTransaction(
           connection,
           wallet,
@@ -221,7 +239,7 @@ const Home: NextPage = () => {
         // Show success toast
         toast({
           title: "Position Opened",
-          description: `Successfully opened ${state.position} position for $${state.depositAmount}`,
+          description: `Successfully opened ${state.position} position for $${state.depositAmount} 🎉`,
           className:
             state.position === "MOON"
               ? "bg-[#2DE76E] text-black border-2 border-[#2DE76E]"
@@ -238,6 +256,11 @@ const Home: NextPage = () => {
             title: "Transaction Failed",
             description: `Transaction failed: ${error.message}`,
             className: "bg-black border-2 border-[#ffe135] text-[#FFFCEA]",
+            action: (
+              <ToastAction altText="Try once more 🥺" onClick={() => openPosition()}>
+                Try once more 🥺
+              </ToastAction>
+            ),
           });
         } else {
           toast({
@@ -245,6 +268,11 @@ const Home: NextPage = () => {
             title: "Transaction Failed",
             description: "Transaction failed. Please try again.",
             className: "bg-black border-2 border-[#ffe135] text-[#FFFCEA]",
+            action: (
+              <ToastAction altText="Try once more 🥺" onClick={() => openPosition()}>
+                Try once more 🥺
+              </ToastAction>
+            ),
           });
         }
         state.isPositionOpen = false;
@@ -256,8 +284,176 @@ const Home: NextPage = () => {
         title: "Error Opening Position",
         description: "Failed to open position. Please try again.",
         className: "bg-black border-2 border-[#ffe135] text-[#FFFCEA]",
+        action: (
+          <ToastAction altText="Try once more 🥺" onClick={() => openPosition()}>
+            Try once more 🥺
+          </ToastAction>
+        ),
       });
     }
+  };
+
+  const closePosition = async () => {
+    try {
+      const perpClient = await getOrCreatePerpClient();
+
+      // Set market based on position side
+      let market;
+      if (state.position === "MOON") {
+        // Get long market
+        market = Object.entries(marketInfo).find(
+          ([_, info]) => info.side === "long"
+        )?.[0];
+      } else if (state.position === "TANK") {
+        // Get short market
+        market = Object.entries(marketInfo).find(
+          ([_, info]) => info.side === "short"
+        )?.[0];
+      }
+
+      if (!market) {
+        throw new Error("Invalid position side or market not found");
+      }
+
+      setPositionPrice(0);
+      setPnl(0);
+
+      const closePositionInstructions = await closeBonkPosition(
+        perpClient,
+        market,
+        marketInfo[market].side as "long" | "short",
+        publicKey as PublicKey,
+        marketInfo[market].pool
+      );
+
+      const addressLookupTablePublicKeys = closePositionInstructions.alts.map(
+        (alt) => alt.key
+      );
+
+      // Show loading toast before transaction and store its dismiss function
+      const { dismiss: dismissLoadingToast } = toast({
+        title: `Closing ${state.position} position`,
+        description: `Your $${state.depositAmount} position will be ready in a min`,
+        className: "bg-[#ffe135] text-black border-2 border-[#ffe135]",
+        duration: Infinity, // Keep the toast until we dismiss it
+      });
+
+      try {
+        const signature = await createAndExecuteTransaction(
+          connection,
+          wallet,
+          closePositionInstructions.instructions,
+          addressLookupTablePublicKeys
+        );
+
+        // Dismiss the loading toast using the dismiss function
+        dismissLoadingToast();
+
+        console.log("signature", signature);
+
+        if (signature.status === "success") {
+          state.isPositionOpen = false;
+          // Show success toast
+          toast({
+            title: "Position Closed",
+            description: `Successfully closed ${state.position} position for $${state.depositAmount} 🎉`,
+            className:
+              state.position === "MOON"
+                ? "bg-[#2DE76E] text-black border-2 border-[#2DE76E]"
+                : "bg-[#E72D36] text-white border-2 border-[#E72D36]",
+          });
+        } else {
+          dismissLoadingToast();
+          toast({
+            variant: "destructive",
+            title: "Transaction Failed",
+            description: `Transaction failed: ${signature.status}`,
+            className: "bg-black border-2 border-[#ffe135] text-[#FFFCEA]",
+            action: (
+              <ToastAction altText="Try once more 🥺" onClick={() => closePosition()}>
+                Try once more 🥺
+              </ToastAction>
+            ),
+          });
+        }
+      } catch (error) {
+        // Dismiss the loading toast using the dismiss function
+        dismissLoadingToast();
+
+        console.error("Failed to execute transaction:", error);
+        if (error instanceof Error) {
+          toast({
+            variant: "destructive",
+            title: "Transaction Failed",
+            description: `Transaction failed: ${error.message}`,
+            className: "bg-black border-2 border-[#ffe135] text-[#FFFCEA]",
+            action: (
+              <ToastAction altText="Try once more 🥺" onClick={() => closePosition()}>
+                Try once more 🥺
+              </ToastAction>
+            ),
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Transaction Failed",
+            description: "Transaction failed. Please try again.",
+            className: "bg-black border-2 border-[#ffe135] text-[#FFFCEA]",
+            action: (
+              <ToastAction altText="Try once more 🥺" onClick={() => closePosition()}>
+                Try once more 🥺
+              </ToastAction>
+            ),
+          });
+        }
+        state.isPositionOpen = false;
+      }
+    } catch (error) {
+      console.error("Error closing position:", error);
+      toast({
+        variant: "destructive",
+        title: "Error Closing Position",
+        description: "Failed to close position. Please try again.",
+        className: "bg-black border-2 border-[#ffe135] text-[#FFFCEA]",
+        action: (
+          <ToastAction altText="Try once more 🥺" onClick={() => closePosition()}>
+            Try once more 🥺
+          </ToastAction>
+        ),
+      });
+    }
+  };
+
+  useEffect(() => {
+    const checkPlayerStatus = () => {
+      if (state.isPlayerDead !== isPlayerDead) {
+        setIsPlayerDead(state.isPlayerDead);
+      }
+    };
+
+    // Check status every 100ms
+    const interval = setInterval(checkPlayerStatus, 100);
+    return () => clearInterval(interval);
+  }, [isPlayerDead]);
+
+  useEffect(() => {
+    if (isPlayerDead && state.isPositionOpen) {
+      closePosition();
+    }
+  }, [isPlayerDead]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const formatPrice = (price: number) => {
+    if (price === 0) return { base: "...", exponent: "" };
+
+    // Convert to exponential notation
+    const scientificStr = price.toExponential(5);
+    const [base, exponent] = scientificStr.split("e");
+    const formattedBase = Number(base).toFixed(5);
+    return {
+      base: formattedBase,
+      // Extract just the number from the exponent (removing 'e-' or 'e+')
+      exponent: exponent.replace("e", ""),
+    };
   };
 
   const handlePositionSelect = (position: "MOON" | "TANK") => {
@@ -296,6 +492,19 @@ const Home: NextPage = () => {
           ? "bg-[#2DE76E] text-black border-2 border-[#2DE76E]"
           : "bg-[#E72D36] text-white border-2 border-[#E72D36]",
     });
+  };
+
+  const formatPnl = (pnl: number) => {
+    if (pnl === 0) return { base: "0.00000", exponent: "0" };
+
+    // Convert to exponential notation
+    const scientificStr = Math.abs(pnl).toExponential(5);
+    const [base, exponent] = scientificStr.split("e");
+    const formattedBase = Number(base).toFixed(5);
+    return {
+      base: formattedBase,
+      exponent: exponent.replace("e", ""),
+    };
   };
 
   return (
@@ -396,28 +605,51 @@ const Home: NextPage = () => {
             <h2 className="text-xl font-bold mb-2 text-[#ffe135]">
               Select Amount
             </h2>
-            <div className="flex justify-between gap-2">
+            <div className="flex justify-between gap-3">
               {[5, 10, 20].map((amount) => (
                 <button
                   key={amount}
                   onClick={() => handleDepositSelect(amount)}
                   className={`
-                    flex-1 px-4 py-2 text-xl font-bold
-                    border-2 border-[#ffe135] rounded-lg
+                    group
+                    relative
+                    flex-1 px-3 py-2 text-xl font-bold
+                    border-2 rounded-lg
+                    transition-all duration-100
+                    transform perspective-1000
+                    disabled:opacity-50
+                    font-arcade
+                    overflow-hidden
                     ${
                       depositAmount === amount
-                        ? "bg-[#ffe135] text-black"
-                        : "bg-black text-[#ffe135]"
+                        ? "bg-[#ffe135] text-black border-[#ffe135] translate-y-1 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.4)]"
+                        : "bg-black text-[#ffe135] border-[#ffe135] hover:translate-y-1 shadow-[0_4px_0_#b39b24,0_6px_8px_rgba(0,0,0,0.4)]"
                     }
-                    hover:bg-[#ffe135] hover:text-black
-                    transition-all duration-200
-                    shadow-[0_0_10px_rgba(255,225,53,0.3)]
-                    hover:shadow-[0_0_20px_rgba(255,225,53,0.5)]
-                    active:transform active:scale-95
-                    font-arcade
+                    active:translate-y-1
+                    active:shadow-[inset_0_-2px_4px_rgba(0,0,0,0.4)]
+                    before:content-['']
+                    before:absolute
+                    before:top-0
+                    before:left-0
+                    before:w-full
+                    before:h-full
+                    before:bg-[linear-gradient(rgba(255,255,255,0.1),transparent)]
                   `}
                 >
-                  ${amount}
+                  <span className="relative z-10">${amount}</span>
+                  <div
+                    className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.2),transparent)] 
+                    opacity-0 group-hover:opacity-100 transition-opacity"
+                  />
+                  {/* Arcade button ring effect */}
+                  <div
+                    className={`
+                      absolute -inset-[2px] rounded-lg
+                      ${depositAmount === amount ? "opacity-100" : "opacity-0"}
+                      transition-opacity duration-200
+                      bg-[radial-gradient(circle,rgba(255,225,53,0.4)_0%,transparent_70%)]
+                    `}
+                  />
                 </button>
               ))}
             </div>
@@ -426,13 +658,18 @@ const Home: NextPage = () => {
           <Card className="bg-black border-2 border-[#ffe135] p-4 mb-2">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold text-[#ffe135]">PNL</h2>
-              <p
-                className={`text-3xl ${
-                  pnl >= 0 ? "text-[#2DE76E]" : "text-[#E72D36]"
-                }`}
-              >
-                {pnl >= 0 ? "+" : "-"}${Math.abs(pnl).toFixed(2)}
-              </p>
+              <div className="relative flex items-baseline">
+                <span
+                  className={`text-3xl ${
+                    pnl >= 0 ? "text-[#2DE76E]" : "text-[#E72D36]"
+                  }`}
+                >
+                  {pnl >= 0 ? "+" : "-"}${formatPnl(pnl).base}
+                </span>
+                <span className="absolute top-0 right-[-1rem] text-sm text-[#FFFCEA]">
+                  -5
+                </span>
+              </div>
             </div>
           </Card>
 

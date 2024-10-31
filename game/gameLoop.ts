@@ -101,6 +101,9 @@ function getGameUpdateFuncs(stage : Container, renderer: Renderer, onPositionReq
 
     function idleUpdate(delta : number) {
         if (!state['modeStarted']){
+            // Reset player death state when game resets
+            state.isPlayerDead = false;
+            
             stage.removeChildren();
             pipeLayer.removeChildren();
             const clickableArea = new Sprite();
@@ -237,10 +240,8 @@ function getGameUpdateFuncs(stage : Container, renderer: Renderer, onPositionReq
     const scoreCard = new ScoreCard();
     function deadUpdate(delta : number) {
         if (!state['modeStarted']){
-            if (state.isPositionOpen) {
-                closeBonkPosition();
-                state.isPositionOpen = false;
-            }
+            // Set player death state to true
+            state.isPlayerDead = true;
             
             const clickableArea = stage.getChildAt(0);
             clickableArea.removeAllListeners();
