@@ -12,6 +12,8 @@ let state = {
         distanceSinceSpawn: 0,
         totalDistance: 0,
         onGround: false,
+        pulseTime: 0,
+        pulseText: null as Text | null,
     },
     history: {
         highScore: 0,

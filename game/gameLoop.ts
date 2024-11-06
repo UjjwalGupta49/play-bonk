@@ -1,4 +1,4 @@
-import { Sprite, Text, Texture, Container, BaseTexture, Rectangle, TilingSprite, Renderer } from 'pixi.js'
+import { Sprite, Text, Texture, Container, BaseTexture, Rectangle, TilingSprite, Renderer, Graphics } from 'pixi.js'
 import { toast } from "@/hooks/use-toast"
 
 import { titleTextStyle, scoreTextStyle } from '@/styles/textStyles'
@@ -203,7 +203,6 @@ function getGameUpdateFuncs(stage : Container, renderer: Renderer, onPositionReq
             console.log('collideGround');
         }
 
-        console.log(pipes)
         // Check for pipe collision and update positions
         pipes = pipes.filter((pipe) => {
             if ( pipeCollides(player, pipe)){
@@ -237,38 +236,21 @@ function getGameUpdateFuncs(stage : Container, renderer: Renderer, onPositionReq
         state['modeStarted'] = false;
     }
     const scoreCard = new ScoreCard();
-    function deadUpdate(delta : number) {
-        if (!state['modeStarted']){
-            // Set player death state to true
+    function deadUpdate(delta: number) {
+        if (!state['modeStarted']) {
             state.isPlayerDead = true;
             
             const clickableArea = stage.getChildAt(0);
             clickableArea.removeAllListeners();
-
-
             document.removeEventListener('keypress', playClick);
-            const richText = new Text('Click to play again', titleTextStyle);
-            richText.anchor.set(.5);
-            richText.x = constants['gameWidth']/2.0;
-            richText.y = constants['gameHeight']*.3;
 
-            setTimeout(()=>{
-                clickableArea.on('pointerdown', deathClick);
-                document.addEventListener('keypress', deathClick);
-            }, 250)
-
-            state['history']['highScore'] = Math.max(state['history']['highScore'], state['inGameState']['currentScore']);
+            // Update high score
+            state['history']['highScore'] = Math.max(
+                state['history']['highScore'], 
+                state['inGameState']['currentScore']
+            );
             localStorage.setItem('highScore', state['history']['highScore'].toString());
-            scoreCard.score.text = state['inGameState']['currentScore'];
-            scoreCard.highScore.text = state['history']['highScore'];
-            
-            stage.addChild(richText);
-            stage.addChild(scoreCard);
-            scoreCard.x = constants['gameWidth']/2.0 - scoreCard.width/2.0;
-            scoreCard.y = constants['gameHeight']/2.0 - scoreCard.height/2.0;
 
-            
-        
             state['modeStarted'] = true;
         }
 
@@ -279,10 +261,8 @@ function getGameUpdateFuncs(stage : Container, renderer: Renderer, onPositionReq
                 player.setVelocity(.1);
                 state['inGameState']['onGround'] = true;
                 player.y = ground.y - player.getGraphicBounds().height/3.0;
-                console.log('collideGround');
             }
         }
-
     }
 
     return [playUpdate, deadUpdate, idleUpdate];

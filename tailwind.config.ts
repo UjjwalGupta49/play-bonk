@@ -55,7 +55,38 @@ const config: Config = {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
-  		}
+  		},
+  		keyframes: {
+  			'border-glow-green': {
+  				'0%, 100%': {
+  					boxShadow: '0 0 5px #2DE76E, 0 0 10px #2DE76E, 0 0 15px #2DE76E',
+  				},
+  				'50%': {
+  					boxShadow: '0 0 10px #2DE76E, 0 0 20px #2DE76E, 0 0 25px #2DE76E',
+  				},
+  			},
+  			'border-glow-red': {
+  				'0%, 100%': {
+  					boxShadow: '0 0 5px #E72D36, 0 0 10px #E72D36, 0 0 15px #E72D36',
+  				},
+  				'50%': {
+  					boxShadow: '0 0 10px #E72D36, 0 0 20px #E72D36, 0 0 25px #E72D36',
+  				},
+  			},
+  			'border-glow-yellow': {
+  				'0%, 100%': {
+  					boxShadow: '0 0 5px #ffe135, 0 0 10px #ffe135, 0 0 15px #ffe135',
+  				},
+  				'50%': {
+  					boxShadow: '0 0 10px #ffe135, 0 0 20px #ffe135, 0 0 25px #ffe135',
+  				},
+  			},
+  		},
+  		animation: {
+  			'border-glow-green': 'border-glow-green 1.5s ease-in-out infinite',
+  			'border-glow-red': 'border-glow-red 1.5s ease-in-out infinite',
+  			'border-glow-yellow': 'border-glow-yellow 1.5s ease-in-out infinite',
+  		},
   	}
   },
   plugins: [require("tailwindcss-animate")],

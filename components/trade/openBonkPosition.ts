@@ -63,12 +63,19 @@ export async function openBonkPosition(
       hexToNumber(collateralOraclePrice.price.toString("hex")) *
       Math.pow(10, hexToNumber(collateralOraclePrice.exponent.toString("hex")));
 
+    const bonkPrice = hexToNumber(targetOraclePrice.price.toString("hex")) *
+    Math.pow(10, hexToNumber(targetOraclePrice.exponent.toString("hex")));
+
     const poolConfig = PoolConfig.fromIdsByName(poolName, "mainnet-beta");
 
     const leverageBN = new BN(leverage);
     const collateralAmountNew = new BN(
       (collateralUsd / collateralTokenPrice) * 10 ** collateralToken.decimals
-    ); 
+    );
+    
+    const collateralBonk = new BN(
+      (collateralUsd / bonkPrice) * 10 ** targetToken.decimals
+    ).div(new BN(10).pow(new BN(targetToken.decimals)));
 
     console.log(`Leverage: ${leverage}`);
     console.log(
@@ -144,14 +151,14 @@ export async function openBonkPosition(
       collateralOraclePrice,
       collateralCustodyAccount
     );
+    // console.log(
+    //   `Calculated token amount (lamports): ${tokenAmountBN.toString()} (${tokenAmountBN
+    //     .div(new BN(10).pow(new BN(9)))
+    //     .toString()} SOL)`
+    // );
     console.log(
-      `Calculated token amount (lamports): ${tokenAmountBN.toString()} (${tokenAmountBN
-        .div(new BN(10).pow(new BN(9)))
-        .toString()} SOL)`
-    );
-    console.log(
-      `Calculated token amount (SOL): ${tokenAmountBN
-        .div(new BN(10).pow(new BN(9)))
+      `Calculated token amount (BONK): ${tokenAmountBN
+        .div(new BN(10).pow(new BN(targetToken.decimals)))
         .toString()}`
     );
 
@@ -209,6 +216,7 @@ export async function openBonkPosition(
       instructions: allInstructions,
       additionalSigners,
       alts: perpClient.addressLookupTables,
+      collateralAmount: collateralBonk,
       positionPrice:
         priceAfterSlippage.price * Math.pow(10, priceAfterSlippage.exponent),
     };

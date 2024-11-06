@@ -30,6 +30,15 @@ import { PhantomWalletName } from "@solana/wallet-adapter-wallets";
 import { POOL_CONFIGS } from "@/utils/constants";
 import { marketInfo } from "@/components/trade/marketBonk";
 import { createAndExecuteTransaction } from "@/components/trade/createAndExecuteTransaction";
+import { GameOver } from "@/components/Game/GameOver";
+
+const getInitialHighScore = () => {
+  if (typeof window !== 'undefined') {
+    const savedHighScore = localStorage.getItem('highestPnl');
+    return savedHighScore ? parseFloat(savedHighScore) : 0;
+  }
+  return 0;
+};
 
 const Home: NextPage = () => {
   const { publicKey, connect, wallets, select } = useWallet();
@@ -44,6 +53,10 @@ const Home: NextPage = () => {
   const [flashPerpClient, setFlashPerpClient] =
     useState<PerpetualsClient | null>(null);
   const [isPlayerDead, setIsPlayerDead] = useState(false);
+  const [showGameOver, setShowGameOver] = useState(false);
+  const [highestPnl, setHighestPnl] = useState(getInitialHighScore);
+  const [collateralAmount, setCollateralAmount] = useState(0);
+  const [isTransactionExecuting, setIsTransactionExecuting] = useState(false);
 
   useEffect(() => {
     let lastPrice = 0;
@@ -58,16 +71,17 @@ const Home: NextPage = () => {
         // Calculate PNL if position is open
         if (state.isPositionOpen && positionPrice !== 0) {
           let pnlValue = 0;
-          const positionSize = state.depositAmount * 5; // 5x leverage
 
           if (state.position === "MOON") {
             // For long positions: (currentPrice - entryPrice) * position size
-            pnlValue = (price - positionPrice) * positionSize;
+            pnlValue = (price - positionPrice) * collateralAmount;
             console.log("pnlValue");
-            console.log(pnlValue, price, positionPrice);
+            console.log(pnlValue, price, positionPrice, collateralAmount);
           } else if (state.position === "TANK") {
             // For short positions: (entryPrice - currentPrice) * position size
-            pnlValue = (positionPrice - price) * positionSize;
+            pnlValue = (positionPrice - price) * collateralAmount;
+            console.log("pnlValue");
+            console.log(pnlValue, price, positionPrice, collateralAmount);
           }
 
           setPnl(pnlValue);
@@ -82,6 +96,16 @@ const Home: NextPage = () => {
       unsubscribeFromPriceFeeds();
     };
   }, [positionPrice]);
+
+  useEffect(() => {
+    const currentAbsPnl = Math.abs(pnl);
+    if (currentAbsPnl > highestPnl) {
+      setHighestPnl(currentAbsPnl);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('highestPnl', currentAbsPnl.toString());
+      }
+    }
+  }, [pnl, highestPnl]);
 
   const getOrCreatePerpClient = async (): Promise<PerpetualsClient> => {
     if (flashPerpClient) {
@@ -193,6 +217,12 @@ const Home: NextPage = () => {
         marketInfo[market].pool
       );
 
+      const collateralAmount = positionInstructions.collateralAmount;
+      setCollateralAmount(Number(collateralAmount.toString()));
+
+      console.log("collateralAmount");
+      console.log(collateralAmount.toString());
+
       const addressLookupTablePublicKeys = positionInstructions.alts.map(
         (alt) => alt.key
       );
@@ -246,7 +276,10 @@ const Home: NextPage = () => {
             description: `Transaction failed: ${error.message}`,
             className: "bg-black border-2 border-[#ffe135] text-[#FFFCEA]",
             action: (
-              <ToastAction altText="Try once more 🥺" onClick={() => openPosition()}>
+              <ToastAction
+                altText="Try once more 🥺"
+                onClick={() => openPosition()}
+              >
                 Try once more 🥺
               </ToastAction>
             ),
@@ -258,7 +291,10 @@ const Home: NextPage = () => {
             description: "Transaction failed. Please try again.",
             className: "bg-black border-2 border-[#ffe135] text-[#FFFCEA]",
             action: (
-              <ToastAction altText="Try once more 🥺" onClick={() => openPosition()}>
+              <ToastAction
+                altText="Try once more 🥺"
+                onClick={() => openPosition()}
+              >
                 Try once more 🥺
               </ToastAction>
             ),
@@ -274,7 +310,10 @@ const Home: NextPage = () => {
         description: "Failed to open position. Please try again.",
         className: "bg-black border-2 border-[#ffe135] text-[#FFFCEA]",
         action: (
-          <ToastAction altText="Try once more 🥺" onClick={() => openPosition()}>
+          <ToastAction
+            altText="Try once more 🥺"
+            onClick={() => openPosition()}
+          >
             Try once more 🥺
           </ToastAction>
         ),
@@ -283,6 +322,10 @@ const Home: NextPage = () => {
   };
 
   const closePosition = async () => {
+    if (!state.isPositionOpen || isTransactionExecuting) {
+      return;
+    }
+
     if (!wallet) {
       toast({
         title: "Connect Wallet",
@@ -293,9 +336,10 @@ const Home: NextPage = () => {
     }
 
     try {
-      const perpClient = await getOrCreatePerpClient();
+      setIsTransactionExecuting(true);
+      state.isPositionOpen = false;
+      setPositionPrice(0);
 
-      // Set market based on position side
       let market;
       if (state.position === "MOON") {
         // Get long market
@@ -313,8 +357,14 @@ const Home: NextPage = () => {
         throw new Error("Invalid position side or market not found");
       }
 
-      setPositionPrice(0);
-      setPnl(0);
+      const perpClient = await getOrCreatePerpClient();
+
+      const { dismiss: dismissLoadingToast } = toast({
+        title: `Closing ${state.position} position`,
+        description: `Your $${state.depositAmount} position will be ready in a min`,
+        className: "bg-[#ffe135] text-black border-2 border-[#ffe135]",
+        duration: Infinity,
+      });
 
       const closePositionInstructions = await closeBonkPosition(
         perpClient,
@@ -328,14 +378,6 @@ const Home: NextPage = () => {
         (alt) => alt.key
       );
 
-      // Show loading toast before transaction and store its dismiss function
-      const { dismiss: dismissLoadingToast } = toast({
-        title: `Closing ${state.position} position`,
-        description: `Your $${state.depositAmount} position will be ready in a min`,
-        className: "bg-[#ffe135] text-black border-2 border-[#ffe135]",
-        duration: Infinity, // Keep the toast until we dismiss it
-      });
-
       try {
         const signature = await createAndExecuteTransaction(
           connection,
@@ -344,12 +386,10 @@ const Home: NextPage = () => {
           addressLookupTablePublicKeys
         );
 
-        // Dismiss the loading toast using the dismiss function
         dismissLoadingToast();
 
-        if (signature.status === "success") {
-          state.isPositionOpen = false;
-          // Show success toast
+        if (signature) {
+          setPnl(0);
           toast({
             title: "Position Closed",
             description: `Successfully closed ${state.position} position for $${state.depositAmount} 🎉`,
@@ -358,25 +398,11 @@ const Home: NextPage = () => {
                 ? "bg-[#2DE76E] text-black border-2 border-[#2DE76E]"
                 : "bg-[#E72D36] text-white border-2 border-[#E72D36]",
           });
-        } else {
-          dismissLoadingToast();
-          toast({
-            variant: "destructive",
-            title: "Transaction Failed",
-            description: `Transaction failed: ${signature.status}`,
-            className: "bg-black border-2 border-[#ffe135] text-[#FFFCEA]",
-            action: (
-              <ToastAction altText="Try once more 🥺" onClick={() => closePosition()}>
-                Try once more 🥺
-              </ToastAction>
-            ),
-          });
         }
       } catch (error) {
-        // Dismiss the loading toast using the dismiss function
         dismissLoadingToast();
+        state.isPositionOpen = true;
 
-        console.error("Failed to execute transaction:", error);
         if (error instanceof Error) {
           toast({
             variant: "destructive",
@@ -384,7 +410,13 @@ const Home: NextPage = () => {
             description: `Transaction failed: ${error.message}`,
             className: "bg-black border-2 border-[#ffe135] text-[#FFFCEA]",
             action: (
-              <ToastAction altText="Try once more 🥺" onClick={() => closePosition()}>
+              <ToastAction
+                altText="Try once more 🥺"
+                onClick={() => {
+                  setIsTransactionExecuting(false); // Reset state before retry
+                  closePosition();
+                }}
+              >
                 Try once more 🥺
               </ToastAction>
             ),
@@ -396,27 +428,42 @@ const Home: NextPage = () => {
             description: "Transaction failed. Please try again.",
             className: "bg-black border-2 border-[#ffe135] text-[#FFFCEA]",
             action: (
-              <ToastAction altText="Try once more 🥺" onClick={() => closePosition()}>
+              <ToastAction
+                altText="Try once more 🥺"
+                onClick={() => {
+                  setIsTransactionExecuting(false); // Reset state before retry
+                  closePosition();
+                }}
+              >
                 Try once more 🥺
               </ToastAction>
             ),
           });
         }
-        state.isPositionOpen = false;
       }
     } catch (error) {
+      state.isPositionOpen = true;
       console.error("Error closing position:", error);
+
       toast({
         variant: "destructive",
         title: "Error Closing Position",
         description: "Failed to close position. Please try again.",
         className: "bg-black border-2 border-[#ffe135] text-[#FFFCEA]",
         action: (
-          <ToastAction altText="Try once more 🥺" onClick={() => closePosition()}>
+          <ToastAction
+            altText="Try once more 🥺"
+            onClick={() => {
+              setIsTransactionExecuting(false); // Reset state before retry
+              closePosition();
+            }}
+          >
             Try once more 🥺
           </ToastAction>
         ),
       });
+    } finally {
+      setIsTransactionExecuting(false);
     }
   };
 
@@ -434,9 +481,10 @@ const Home: NextPage = () => {
 
   useEffect(() => {
     if (isPlayerDead && state.isPositionOpen) {
+      setShowGameOver(true);
       closePosition();
     }
-  }, [isPlayerDead]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isPlayerDead, pnl]);
 
   const formatPrice = (price: number) => {
     if (price === 0) return { base: "...", exponent: "" };
@@ -503,6 +551,13 @@ const Home: NextPage = () => {
     };
   };
 
+  const handleGameOverClose = () => {
+    setShowGameOver(false);
+    state.mode = "idle";
+    state.modeStarted = false;
+    state.isPlayerDead = false;
+  };
+
   return (
     <div className="min-h-screen bg-[#171B26] text-[#FFFCEA] p-4 flex items-center justify-center font-mono">
       <Card className="w-full max-w-6xl aspect-video bg-black rounded-3xl border-4 border-[#ffe135] p-4 grid grid-cols-[1fr,2fr,1fr] gap-4 shadow-[0_0_20px_rgba(255,225,53,0.5)]">
@@ -519,9 +574,10 @@ const Home: NextPage = () => {
               transform perspective-1000
               ${
                 state.position === "MOON"
-                  ? "bg-[#2DE76E] text-black border-[#2DE76E] translate-y-1 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.4)]"
+                  ? "bg-[#2DE76E] text-black border-[#2DE76E] translate-y-1 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.4)] animate-glow-green"
                   : "bg-black text-[#2DE76E] border-[#2DE76E] hover:translate-y-1 shadow-[0_6px_0_#1a8641,0_10px_10px_rgba(0,0,0,0.4)]"
               }
+              ${!state.position || state.position === "MOON" ? "before:animate-border-glow-green" : ""}
               active:translate-y-1
               active:shadow-[inset_0_-2px_4px_rgba(0,0,0,0.4)]
               disabled:opacity-50
@@ -532,7 +588,9 @@ const Home: NextPage = () => {
               before:left-0
               before:w-full
               before:h-full
-              before:bg-[linear-gradient(rgba(255,255,255,0.1),transparent)]
+              before:border-2
+              before:border-[#2DE76E]
+              before:rounded-lg
               overflow-hidden
             `}
             onClick={() => handlePositionSelect("MOON")}
@@ -554,9 +612,10 @@ const Home: NextPage = () => {
               transform perspective-1000
               ${
                 state.position === "TANK"
-                  ? "bg-[#E72D36] text-black border-[#E72D36] translate-y-1 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.4)]"
+                  ? "bg-[#E72D36] text-black border-[#E72D36] translate-y-1 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.4)] animate-glow-red"
                   : "bg-black text-[#E72D36] border-[#E72D36] hover:translate-y-1 shadow-[0_6px_0_#8f1c22,0_10px_10px_rgba(0,0,0,0.4)]"
               }
+              ${!state.position || state.position === "TANK" ? "before:animate-border-glow-red" : ""}
               active:translate-y-1
               active:shadow-[inset_0_-2px_4px_rgba(0,0,0,0.4)]
               disabled:opacity-50
@@ -567,7 +626,9 @@ const Home: NextPage = () => {
               before:left-0
               before:w-full
               before:h-full
-              before:bg-[linear-gradient(rgba(255,255,255,0.1),transparent)]
+              before:border-2
+              before:border-[#E72D36]
+              before:rounded-lg
               overflow-hidden
             `}
             onClick={() => handlePositionSelect("TANK")}
@@ -613,14 +674,12 @@ const Home: NextPage = () => {
                     border-2 rounded-lg
                     transition-all duration-100
                     transform perspective-1000
-                    disabled:opacity-50
-                    font-arcade
-                    overflow-hidden
                     ${
                       depositAmount === amount
-                        ? "bg-[#ffe135] text-black border-[#ffe135] translate-y-1 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.4)]"
+                        ? "bg-[#ffe135] text-black border-[#ffe135] translate-y-1 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.4)] animate-glow-yellow"
                         : "bg-black text-[#ffe135] border-[#ffe135] hover:translate-y-1 shadow-[0_4px_0_#b39b24,0_6px_8px_rgba(0,0,0,0.4)]"
                     }
+                    ${state.position !== "NONE" && !depositAmount ? "before:animate-border-glow-yellow" : ""}
                     active:translate-y-1
                     active:shadow-[inset_0_-2px_4px_rgba(0,0,0,0.4)]
                     before:content-['']
@@ -660,10 +719,7 @@ const Home: NextPage = () => {
                     pnl >= 0 ? "text-[#2DE76E]" : "text-[#E72D36]"
                   }`}
                 >
-                  {pnl >= 0 ? "+" : "-"}${formatPnl(pnl).base}
-                </span>
-                <span className="absolute top-0 right-[-1rem] text-sm text-[#FFFCEA]">
-                  -5
+                  {pnl >= 0 ? "+" : "-"}${pnl.toFixed(5)}
                 </span>
               </div>
             </div>
@@ -701,6 +757,12 @@ const Home: NextPage = () => {
         </div>
       </Card>
       <Toaster />
+      <GameOver
+        isOpen={showGameOver}
+        onClose={handleGameOverClose}
+        score={pnl}
+        highScore={highestPnl}
+      />
     </div>
   );
 };
