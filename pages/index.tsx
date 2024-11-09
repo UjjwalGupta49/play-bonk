@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { motion } from "framer-motion"
-import { Play, Twitter, DollarSign } from "lucide-react"
+import { Play, Twitter, DollarSign, Mail } from "lucide-react"
 
 export default function Home() {
   const [mounted, setMounted] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [twitterHandle, setTwitterHandle] = useState("")
+  const [email, setEmail] = useState("")
   const [favoriteMeme, setFavoriteMeme] = useState("")
 
   useEffect(() => {
@@ -19,11 +20,45 @@ export default function Home() {
 
   if (!mounted) return null
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle form submission here
-    console.log("Form submitted:", { twitterHandle, favoriteMeme })
-    setIsModalOpen(false)
+    
+    // Construct the Google Form URL with form responses
+    const baseUrl = "https://docs.google.com/forms/d/e/1FAIpQLSd4L8mX-GbalKtk41_P7ZPQYXhA6fTE486NIRubitJEfmg1mA/formResponse"
+    const formData = new FormData()
+    
+    // Map the form fields to Google Form entry IDs
+    formData.append("entry.2069125003", email)              // Email field
+    formData.append("entry.1006830469", twitterHandle)      // Twitter handle field
+    formData.append("entry.308296035", favoriteMeme)        // Favorite memecoin field
+
+    try {
+      // Create a URL with parameters
+      const urlWithParams = new URL(baseUrl)
+      formData.forEach((value, key) => {
+        urlWithParams.searchParams.append(key, value.toString())
+      })
+
+      // Use fetch to submit the form
+      const response = await fetch(urlWithParams.toString(), {
+        method: "POST",
+        mode: "no-cors", // Required for Google Forms
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      })
+
+      console.log("Form submitted successfully")
+      setIsModalOpen(false)
+      
+      // Optional: Clear form fields after submission
+      setEmail("")
+      setTwitterHandle("")
+      setFavoriteMeme("")
+      
+    } catch (error) {
+      console.error("Error submitting form:", error)
+    }
   }
 
   return (
@@ -186,8 +221,25 @@ export default function Home() {
               </div>
             </div>
             <div className="space-y-2">
+              <label htmlFor="email" className="block text-sm font-medium text-[#FFFFFF]">
+                Email Address
+              </label>
+              <div className="relative">
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="pl-10 bg-black border-[#1B8DFE] text-white"
+                />
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#FFFFFF] w-4 h-4" />
+              </div>
+            </div>
+            <div className="space-y-2">
               <label htmlFor="memecoin" className="block text-sm font-medium text-[#FFFFFF]">
-                What's your favorite memecoin?
+                What&apos;s your favorite memecoin?
               </label>
               <div className="relative">
                 <Input
