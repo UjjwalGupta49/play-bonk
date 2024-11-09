@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://playbonk.fun/sitemap.xml 
