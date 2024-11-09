@@ -137,6 +137,21 @@ export default function Home() {
         <meta name="google-site-verification" content="your-google-verification-code" />
       </Head>
 
+      {/* Add Google Analytics */}
+      <Script
+        src="https://www.googletagmanager.com/gtag/js?id=G-5MGHYY191M"
+        strategy="afterInteractive"
+      />
+      <Script id="google-analytics" strategy="afterInteractive">
+        {`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'G-5MGHYY191M');
+        `}
+      </Script>
+
       <Script
         id="schema-structured-data"
         type="application/ld+json"
@@ -210,7 +225,7 @@ export default function Home() {
         <nav className="relative z-30 pt-12 pb-4 w-full max-w-4xl mx-auto">
           <div className="flex items-center justify-center gap-3 sm:gap-6">
             <a
-              href="https://google.com"
+              href="https://github.com/UjjwalGupta49/play-bonk"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-gray-400 hover:text-gray-300 transition-colors text-xs sm:text-base"
@@ -220,7 +235,7 @@ export default function Home() {
             </a>
 
             <a
-              href="https://google.com"
+              href="https://x.com/ujjwalgupta49"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-gray-400 hover:text-gray-300 transition-colors text-xs sm:text-base"
