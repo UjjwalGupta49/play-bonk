@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { motion } from "framer-motion"
-import { Play, Twitter, DollarSign, Mail } from "lucide-react"
+import { Play, Twitter, DollarSign, Mail, Laptop, Candy, Share2 } from "lucide-react"
 import Head from "next/head"
 import Script from "next/script"
+import { toast } from "sonner"
+import { Toaster } from "@/components/ui/toaster"
 
 export default function Home() {
   const [mounted, setMounted] = useState(false)
@@ -30,21 +32,19 @@ export default function Home() {
     const formData = new FormData()
     
     // Map the form fields to Google Form entry IDs
-    formData.append("entry.2069125003", email)              // Email field
-    formData.append("entry.1006830469", twitterHandle)      // Twitter handle field
-    formData.append("entry.308296035", favoriteMeme)        // Favorite memecoin field
+    formData.append("entry.2069125003", email)
+    formData.append("entry.1006830469", twitterHandle)
+    formData.append("entry.308296035", favoriteMeme)
 
     try {
-      // Create a URL with parameters
       const urlWithParams = new URL(baseUrl)
       formData.forEach((value, key) => {
         urlWithParams.searchParams.append(key, value.toString())
       })
 
-      // Use fetch to submit the form
       const response = await fetch(urlWithParams.toString(), {
         method: "POST",
-        mode: "no-cors", // Required for Google Forms
+        mode: "no-cors",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
@@ -53,13 +53,59 @@ export default function Home() {
       console.log("Form submitted successfully")
       setIsModalOpen(false)
       
-      // Optional: Clear form fields after submission
+      // Show success toast
+      toast(
+        <div className="flex flex-col gap-1">
+          <p className="font-bold text-black">You&apos;re on the waitlist 🎉</p>
+          <p className="text-gray-600 text-sm">You will be notified on game reveal</p>
+        </div>,
+        {
+          position: "top-center",
+          duration: 5000,
+          className: "bg-white text-black",
+          style: {
+            backgroundColor: "white",
+            color: "black",
+            border: "1px solid #e2e8f0",
+          }
+        }
+      )
+      
+      // Clear form fields
       setEmail("")
       setTwitterHandle("")
       setFavoriteMeme("")
       
     } catch (error) {
       console.error("Error submitting form:", error)
+      // Optionally show error toast
+      toast.error("Something went wrong. Please try again.")
+    }
+  }
+
+  const handleShare = async () => {
+    const shareUrl = "https://playbonk.fun"
+    const shareText = "Play exciting meme coin trading games on Solana 🎮"
+
+    if (navigator.share && window.innerWidth <= 768) {
+      // Mobile native share
+      try {
+        await navigator.share({
+          title: "Game On Meme Money",
+          text: shareText,
+          url: shareUrl,
+        })
+      } catch (err) {
+        console.log("Error sharing:", err)
+      }
+    } else {
+      // Desktop clipboard copy
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        toast("Link copied to clipboard!")
+      } catch (err) {
+        console.log("Error copying to clipboard:", err)
+      }
     }
   }
 
@@ -112,7 +158,7 @@ export default function Home() {
         }}
       />
 
-      <div className="min-h-screen bg-black dark relative overflow-hidden flex items-center justify-center px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-black dark relative overflow-hidden flex flex-col px-4 sm:px-6 lg:px-8">
         {/* Running Text Strip - Top */}
         <div className="absolute top-0 left-0 right-0 bg-[#1BFE8D] overflow-hidden h-8 z-20">
           <motion.div
@@ -148,19 +194,53 @@ export default function Home() {
           className="absolute inset-0"
           style={{
             backgroundImage: `
-              linear-gradient(to right, #1B8DFE 1px, transparent 1px),
-              linear-gradient(to bottom, #1B8DFE 1px, transparent 1px)
+              linear-gradient(to right, #1B8DFE 2px, transparent 2px),
+              linear-gradient(to bottom, #1B8DFE 2px, transparent 2px)
             `,
             backgroundSize: "40px 40px",
             opacity: 0.15,
           }}
         />
 
-        {/* Adjust Glowing Orbs for mobile */}
+        {/* Glowing Orbs */}
         <div className="absolute top-10 left-10 sm:top-20 sm:left-20 w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-[#1B8DFE] blur-3xl opacity-20" />
         <div className="absolute bottom-10 right-10 sm:bottom-20 sm:right-20 w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-[#FE1D1D] blur-3xl opacity-20" />
 
-        <main className="relative z-10 text-center px-4 w-full max-w-4xl mx-auto">
+        {/* Navbar - with proper spacing from top strip */}
+        <nav className="relative z-30 pt-12 pb-4 w-full max-w-4xl mx-auto">
+          <div className="flex items-center justify-center gap-3 sm:gap-6">
+            <a
+              href="https://google.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-gray-400 hover:text-gray-300 transition-colors text-xs sm:text-base"
+            >
+              <Laptop className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Contribute</span>
+            </a>
+
+            <a
+              href="https://google.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-gray-400 hover:text-gray-300 transition-colors text-xs sm:text-base"
+            >
+              <Candy className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Feature Request</span>
+            </a>
+
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-2 text-gray-400 hover:text-gray-300 transition-colors text-xs sm:text-base"
+            >
+              <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Share</span>
+            </button>
+          </div>
+        </nav>
+
+        {/* Main Content - Adjusted position upward */}
+        <main className="flex-1 flex flex-col items-center justify-center relative z-10 text-center -mt-20 sm:-mt-16">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -182,6 +262,7 @@ export default function Home() {
             fun games to bet on internet culture
           </motion.p>
 
+          {/* Play Now Button */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -321,6 +402,9 @@ export default function Home() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Add Sonner for toast notifications */}
+      <Toaster />
     </>
   )
 }

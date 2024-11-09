@@ -10,6 +10,7 @@ import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { RPC } from "@/utils/constants";
+import { Toaster } from "sonner";
 
 export default function App({ Component, pageProps }: AppProps) {
   const network = WalletAdapterNetwork.Mainnet;
@@ -33,6 +34,7 @@ export default function App({ Component, pageProps }: AppProps) {
           <Component {...pageProps} />
         </WalletModalProvider>
       </WalletProvider>
+      <Toaster />
     </ConnectionProvider>
   );
 }
