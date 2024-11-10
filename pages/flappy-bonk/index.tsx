@@ -41,6 +41,89 @@ const getInitialHighScore = () => {
   return 0;
 };
 
+const AnimatedBorder = ({ color, buttonType }: { color: string, buttonType: 'position' | 'amount' }) => {
+  const borderSize = buttonType === 'position' ? '10px' : '4px';
+  
+  const stripeGradient = color === 'green'
+    ? 'repeating-linear-gradient(45deg, #2DE76E 0px, #2DE76E 10px, #1a8641 10px, #1a8641 20px)'
+    : color === 'red'
+      ? 'repeating-linear-gradient(45deg, #E72D36 0px, #E72D36 10px, #8f1c22 10px, #8f1c22 20px)'
+      : 'repeating-linear-gradient(45deg, #ffe135 0px, #ffe135 10px, #b39b24 10px, #b39b24 20px)';
+
+  return (
+    <>
+      {/* Top border */}
+      <motion.div
+        className="absolute top-0 left-0 right-0"
+        style={{
+          height: borderSize,
+          background: stripeGradient,
+          backgroundSize: '28px 28px',
+        }}
+        animate={{
+          backgroundPosition: ['0px 0px', '-28px 0px'],
+        }}
+        transition={{
+          duration: 0.3,
+          ease: "linear",
+          repeat: Infinity,
+        }}
+      />
+      {/* Right border */}
+      <motion.div
+        className="absolute top-0 right-0 bottom-0"
+        style={{
+          width: borderSize,
+          background: stripeGradient,
+          backgroundSize: '28px 28px',
+        }}
+        animate={{
+          backgroundPosition: ['0px 0px', '0px -28px'],
+        }}
+        transition={{
+          duration: 0.3,
+          ease: "linear",
+          repeat: Infinity,
+        }}
+      />
+      {/* Bottom border */}
+      <motion.div
+        className="absolute bottom-0 left-0 right-0"
+        style={{
+          height: borderSize,
+          background: stripeGradient,
+          backgroundSize: '28px 28px',
+        }}
+        animate={{
+          backgroundPosition: ['0px 0px', '28px 0px'],
+        }}
+        transition={{
+          duration: 0.3,
+          ease: "linear",
+          repeat: Infinity,
+        }}
+      />
+      {/* Left border */}
+      <motion.div
+        className="absolute top-0 left-0 bottom-0"
+        style={{
+          width: borderSize,
+          background: stripeGradient,
+          backgroundSize: '28px 28px',
+        }}
+        animate={{
+          backgroundPosition: ['0px 0px', '0px 28px'],
+        }}
+        transition={{
+          duration: 0.3,
+          ease: "linear",
+          repeat: Infinity,
+        }}
+      />
+    </>
+  );
+};
+
 const Home: NextPage = () => {
   const { publicKey, connect, wallets, select } = useWallet();
   const { connection } = useConnection();
@@ -338,6 +421,9 @@ const Home: NextPage = () => {
 
     try {
       setIsTransactionExecuting(true);
+      
+      // Reset position state to NONE to trigger animation reset
+
       state.isPositionOpen = false;
       setPositionPrice(0);
 
@@ -357,6 +443,8 @@ const Home: NextPage = () => {
       if (!market) {
         throw new Error("Invalid position side or market not found");
       }
+
+      state.position = "NONE";
 
       const perpClient = await getOrCreatePerpClient();
 
@@ -391,19 +479,21 @@ const Home: NextPage = () => {
 
         if (signature) {
           setPnl(0);
+          // Ensure position stays NONE after successful close
+          state.position = "NONE";
+          
           toast({
             title: "Position Closed",
-            description: `Successfully closed ${state.position} position for $${state.depositAmount} 🎉`,
-            className:
-              state.position === "MOON"
-                ? "bg-[#2DE76E] text-black border-2 border-[#2DE76E]"
-                : "bg-[#E72D36] text-white border-2 border-[#E72D36]",
+            description: `Successfully closed position for $${state.depositAmount} 🎉`,
+            className: "bg-[#ffe135] text-black border-2 border-[#ffe135]",
           });
         }
       } catch (error) {
         dismissLoadingToast();
-        state.isPositionOpen = true;
-
+        // If error occurs, keep position state as NONE
+        state.position = "NONE";
+        state.isPositionOpen = false;
+        
         if (error instanceof Error) {
           toast({
             variant: "destructive",
@@ -444,6 +534,7 @@ const Home: NextPage = () => {
       }
     } catch (error) {
       state.isPositionOpen = true;
+      
       console.error("Error closing position:", error);
 
       toast({
@@ -576,13 +667,13 @@ const Home: NextPage = () => {
         <div className="flex flex-col justify-between relative">
           {/* MOON Button */}
           <Button
-            variant="outline"
             className={`
               group
               relative
               h-1/2 text-4xl font-bold 
               transition-all duration-200
               transform perspective-1000
+              overflow-hidden
               ${
                 state.position === "MOON"
                   ? "bg-[#2DE76E] text-black translate-y-1 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.4)]"
@@ -592,35 +683,33 @@ const Home: NextPage = () => {
               active:shadow-[inset_0_-2px_4px_rgba(0,0,0,0.4)]
               disabled:opacity-50
               font-arcade
-              overflow-hidden
+              flex flex-col items-center justify-center
+              px-2
             `}
             onClick={() => handlePositionSelect("MOON")}
             disabled={state.isPositionOpen}
           >
-            {state.position !== "TANK" && (
-              <motion.div
-                variants={borderVariants}
-                animate="animate"
-                className="absolute inset-[3px] rounded-lg border-[3px] border-transparent"
-                style={{
-                  background: "repeating-linear-gradient(-45deg, #2DE76E 0, #2DE76E 12px, transparent 12px, transparent 24px)",
-                }}
-              />
+            {(state.position === "NONE" || state.position === "MOON") && (
+              <AnimatedBorder color="green" buttonType="position" />
             )}
-            <span className="relative z-10 bg-inherit rounded-md flex items-center justify-center w-full h-full">
-              MOON
-            </span>
+            <div className="relative z-10 flex flex-col items-center">
+              <span className="text-4xl">MOON</span>
+              <div className={`text-xs mt-2 font-normal text-center leading-tight w-full ${state.position === "MOON" ? "text-black" : "text-[#2DE76E]"}`}>
+                <div>you're betting</div>
+                <div>the price rises</div>
+              </div>
+            </div>
           </Button>
 
           {/* TANK Button */}
           <Button
-            variant="outline"
             className={`
               group
               relative
               h-1/2 text-4xl font-bold 
               transition-all duration-200
               transform perspective-1000
+              overflow-hidden
               ${
                 state.position === "TANK"
                   ? "bg-[#E72D36] text-black translate-y-1 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.4)]"
@@ -630,24 +719,22 @@ const Home: NextPage = () => {
               active:shadow-[inset_0_-2px_4px_rgba(0,0,0,0.4)]
               disabled:opacity-50
               font-arcade
-              overflow-hidden
+              flex flex-col items-center justify-center
+              px-2
             `}
             onClick={() => handlePositionSelect("TANK")}
             disabled={state.isPositionOpen}
           >
-            {state.position !== "MOON" && (
-              <motion.div
-                variants={borderVariants}
-                animate="animate"
-                className="absolute inset-[3px] rounded-lg border-[3px] border-transparent"
-                style={{
-                  background: "repeating-linear-gradient(-45deg, #E72D36 0, #E72D36 12px, transparent 12px, transparent 24px)",
-                }}
-              />
+            {(state.position === "NONE" || state.position === "TANK") && (
+              <AnimatedBorder color="red" buttonType="position" />
             )}
-            <span className="relative z-10 bg-inherit rounded-md flex items-center justify-center w-full h-full">
-              TANK
-            </span>
+            <div className="relative z-10 flex flex-col items-center">
+              <span className="text-4xl">TANK</span>
+              <div className={`text-xs mt-2 font-normal text-center leading-tight w-full ${state.position === "TANK" ? "text-black" : "text-[#E72D36]"}`}>
+                <div>you're betting</div>
+                <div>the price falls</div>
+              </div>
+            </div>
           </Button>
         </div>
 
@@ -661,12 +748,11 @@ const Home: NextPage = () => {
               Instructions
             </h2>
             <ol className="list-decimal list-inside space-y-2 text-[#FFFCEA]">
-              <li>Choose a side MOON or TANK</li>
+              <li>Choose a side MOON or TANK.</li>
               <li>
-                Sign a transaction open a position (long/short) on flashtrade
+                Select an amount to start the game.
               </li>
-              <li>Fly through the price candles using spacebar</li>
-              <li>If you fall you LOSE (position close)</li>
+              <li>Fly through the price candles using spacebar.</li>
             </ol>
           </Card>
 
@@ -686,25 +772,20 @@ const Home: NextPage = () => {
                     border-2 rounded-lg
                     transition-all duration-100
                     transform perspective-1000
+                    overflow-hidden
                     ${
                       depositAmount === amount
                         ? "bg-[#ffe135] text-black translate-y-1 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.4)]"
                         : "bg-black text-[#ffe135] hover:translate-y-1 shadow-[0_4px_0_#b39b24,0_6px_8px_rgba(0,0,0,0.4)]"
                     }
-                    ${
-                      depositAmount === amount
-                        ? "before:bg-[repeating-linear-gradient(-45deg,#ffe135_0,#ffe135_12px,transparent_12px,transparent_24px)] before:bg-[length:200%_200%] before:animate-roll-yellow"
-                        : ""
-                    }
-                    before:content-['']
-                    before:absolute
-                    before:inset-0
-                    before:m-[3px]
-                    before:rounded-lg
-                    before:border-[3px]
-                    before:border-transparent
                   `}
                 >
+                  {state.position !== "NONE" && (
+                    <AnimatedBorder 
+                      color="yellow" 
+                      buttonType="amount"
+                    />
+                  )}
                   <span className="relative z-10 bg-inherit rounded-md flex items-center justify-center w-full h-full">
                     ${amount}
                   </span>

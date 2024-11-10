@@ -140,7 +140,7 @@ function getGameUpdateFuncs(stage : Container, renderer: Renderer, onPositionReq
         ground.tilePosition.x -= delta*constants['moveSpeed'];
     }
 
-    let scoreText : Text;
+    // let scoreText : Text;
     function playUpdate(delta : number) {
         if (!state['modeStarted']){
             state['inGameState']['totalDistance'] = 0;
@@ -152,11 +152,11 @@ function getGameUpdateFuncs(stage : Container, renderer: Renderer, onPositionReq
             clickableArea.removeAllListeners();
 
 
-            scoreText = new Text('0', scoreTextStyle);
-            scoreText.x = constants['gameWidth']/2.0 - (scoreText.width/2.0);
-            scoreText.y = constants['gameHeight']*.1;
+            // scoreText = new Text('0', scoreTextStyle);
+            // scoreText.x = constants['gameWidth']/2.0 - (scoreText.width/2.0);
+            // scoreText.y = constants['gameHeight']*.1;
 
-            stage.addChild(scoreText);
+            // stage.addChild(scoreText);
 
             document.removeEventListener('keypress', deathClick);
             document.removeEventListener('keypress', idleClick);
@@ -174,7 +174,7 @@ function getGameUpdateFuncs(stage : Container, renderer: Renderer, onPositionReq
         }
 
         state['inGameState']['currentScore'] = Math.floor(Math.max(0, (state['inGameState']['totalDistance']-constants['gameWidth']-constants['player']['hitboxWidth'])/constants['pipes']['distancePerSpawn']))
-        scoreText.text = state['inGameState']['currentScore'];
+        // scoreText.text = state['inGameState']['currentScore'];
         player.updatePhysics(delta, .5, 25);
         state['inGameState']['distanceSinceSpawn'] += delta*constants['moveSpeed'];
         state['inGameState']['totalDistance'] += delta*constants['moveSpeed'];

@@ -17,10 +17,23 @@ interface GameOverProps {
 
 export function GameOver({ isOpen, onClose, score, highScore }: GameOverProps) {
   const [isNewHighScore, setIsNewHighScore] = useState(false)
+  const [localScore, setLocalScore] = useState(0)
 
   useEffect(() => {
-    setIsNewHighScore(score > highScore)
-  }, [score, highScore])
+    if (isOpen) {
+      setLocalScore(score)
+    }
+  }, [isOpen, score])
+
+  useEffect(() => {
+    setIsNewHighScore(localScore > highScore)
+  }, [localScore, highScore])
+
+  const handleClose = () => {
+    onClose()
+    // Reset local score when modal closes
+    setLocalScore(0)
+  }
 
   const formatUSD = (value: number) => {
     const scientificStr = Math.abs(value).toExponential(5);
@@ -34,7 +47,7 @@ export function GameOver({ isOpen, onClose, score, highScore }: GameOverProps) {
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="
         bg-[#171B26] 
         border-4 border-[#ffe135] 
@@ -53,7 +66,7 @@ export function GameOver({ isOpen, onClose, score, highScore }: GameOverProps) {
               relative
               font-arcade 
               text-4xl 
-              ${score >= 0 ? 'text-[#2DE76E]' : 'text-[#E72D36]'}
+              ${localScore >= 0 ? 'text-[#2DE76E]' : 'text-[#E72D36]'}
               drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]
               before:content-['']
               before:absolute
@@ -64,7 +77,7 @@ export function GameOver({ isOpen, onClose, score, highScore }: GameOverProps) {
               before:bg-[linear-gradient(rgba(255,255,255,0.1),transparent)]
               animate-pulse
             `}>
-              {score >= 0 ? '$ WON $' : 'BONKED !!!'}
+              {localScore >= 0 ? '$ WON $' : 'BONKED !!!'}
             </span>
           </DialogTitle>
         </DialogHeader>
@@ -88,10 +101,10 @@ export function GameOver({ isOpen, onClose, score, highScore }: GameOverProps) {
                 <p className={`
                   font-arcade 
                   text-2xl
-                  ${score >= 0 ? 'text-[#2DE76E]' : 'text-[#E72D36]'}
+                  ${localScore >= 0 ? 'text-[#2DE76E]' : 'text-[#E72D36]'}
                   drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]
                 `}>
-                  {score >= 0 ? '+' : '-'}${Math.abs(score).toFixed(5)}
+                  {localScore >= 0 ? '+' : '-'}${Math.abs(localScore).toFixed(5)}
                 </p>
               </div>
             </div>
@@ -132,7 +145,7 @@ export function GameOver({ isOpen, onClose, score, highScore }: GameOverProps) {
 
           {/* Play Again Button */}
           <Button 
-            onClick={onClose}
+            onClick={handleClose}
             className="
               group
               relative
